@@ -2,8 +2,6 @@
 
 Windows toast notifications for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with **automatic tab switching** in Windows Terminal.
 
-![Toast notification screenshot](assets/screenshot.png)
-
 ## Features
 
 - **Automatic tab switching** - identifies and switches to the correct Windows Terminal tab when multiple Claude Code sessions are open
@@ -25,7 +23,7 @@ Windows toast notifications for [Claude Code](https://docs.anthropic.com/en/docs
 Clone and run the installer:
 
 ```powershell
-git clone https://github.com/tro/WindowsClaudeNotify.git
+git clone https://github.com/troshab/WindowsClaudeNotify.git
 cd WindowsClaudeNotify
 powershell -ExecutionPolicy Bypass -File install.ps1
 ```
