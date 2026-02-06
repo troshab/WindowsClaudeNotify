@@ -1,13 +1,13 @@
 # WindowsClaudeNotify
 
-Windows toast notifications for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with **automatic tab switching** in Windows Terminal.
+Windows toast notifications for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with **instant tab switching** in Windows Terminal. When Claude Code needs your attention, the correct tab is focused immediately - no clicking required.
 
 ## Features
 
-- **Automatic tab switching** - identifies and switches to the correct Windows Terminal tab when multiple Claude Code sessions are open
+- **Instant tab switching** - immediately focuses the correct Windows Terminal tab when a notification fires, even with multiple Claude Code sessions open
 - **Real messages** - shows the actual Claude Code notification text (permission prompts, task completion, etc.)
 - **No window resize** - restores minimized windows without un-maximizing (uses `SW_RESTORE`)
-- **Toast button** - "Open Terminal" button in the toast uses a custom `claude-focus:` protocol to switch tabs even after the notification script exits
+- **"Open Terminal" button** - toast includes a button to return to the correct tab later via a custom `claude-focus:` protocol (useful if you switched away)
 - **Silent wrapper** - VBS launcher prevents console window flash when clicking the toast button
 - **Process tree analysis** - walks up the PID parent chain + uses `NtQueryInformationProcess` to map the calling Claude Code session to the correct WT tab
 
@@ -79,16 +79,17 @@ notify.ps1 (reads hook JSON from stdin)
     |       Maps to shell children of WT, sorted by StartTime
     |       Determines tab index
     |-- 5. UI Automation: SelectionItemPattern.Select() on TabItem
+    |       ** Tab switches IMMEDIATELY here **
     |-- 6. Shows toast notification with tab index in button URL
     |
     v
-Toast button click -> claude-focus:{tabIndex}
+Later: toast "Open Terminal" button click -> claude-focus:{tabIndex}
     |
     v
 focus.vbs (silent launcher, no console flash)
     |
     v
-focus.ps1 (parses URI, focuses WT, switches tab via UI Automation)
+focus.ps1 (parses URI, re-focuses WT, switches tab via UI Automation)
 ```
 
 ### Tab detection explained
