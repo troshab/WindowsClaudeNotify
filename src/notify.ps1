@@ -1,6 +1,7 @@
 # WindowsClaudeNotify - Main notification hook script
 # Called by Claude Code via the Notification hook
-# Reads hook JSON from stdin, focuses the correct WT tab, and shows a toast
+# Reads hook JSON from stdin, determines tab index, and shows a toast
+# Tab focusing happens only when the user clicks "Open Terminal" in the toast
 
 param(
     [string]$Title = "Claude Code",
@@ -33,14 +34,12 @@ if ($stdinText) {
 
 if (-not $Body) { $Body = "Waiting for your input" }
 
-# --- Focus terminal + switch tab ---
+# --- Determine tab index via process tree ---
+$tabIndex = -1
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
 public class WinAPI {
-    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
-    [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
     [DllImport("ntdll.dll")]
     private static extern int NtQueryInformationProcess(IntPtr hProcess, int pic, ref PBI pbi, int cb, ref int sz);
     [StructLayout(LayoutKind.Sequential)]
@@ -56,14 +55,6 @@ public class WinAPI {
 
 $wt = Get-Process -Name WindowsTerminal -ErrorAction SilentlyContinue | Select-Object -First 1
 if ($wt) {
-    $h = $wt.MainWindowHandle
-    if ([WinAPI]::IsIconic($h)) {
-        # SW_RESTORE (9): restores minimized window without un-maximizing
-        [WinAPI]::ShowWindow($h, 9)
-    }
-    [WinAPI]::SetForegroundWindow($h)
-
-    # Switch to correct tab via process tree analysis
     try {
         $wtPid = $wt.Id
 
@@ -86,30 +77,11 @@ if ($wt) {
         }
 
         $ourShell = $shells | Where-Object { $ancestors -contains $_.Id } | Select-Object -First 1
-        $tabIndex = -1
         if ($ourShell) {
             $tabIndex = 0
             foreach ($s in $shells) {
                 if ($s.Id -eq $ourShell.Id) { break }
                 $tabIndex++
-            }
-        }
-
-        # Select tab by index via UI Automation
-        if ($tabIndex -ge 0) {
-            Add-Type -AssemblyName UIAutomationClient
-            Add-Type -AssemblyName UIAutomationTypes
-
-            $root = [System.Windows.Automation.AutomationElement]::FromHandle($h)
-            $tabCond = New-Object System.Windows.Automation.PropertyCondition(
-                [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
-                [System.Windows.Automation.ControlType]::TabItem
-            )
-            $uiTabs = $root.FindAll([System.Windows.Automation.TreeScope]::Descendants, $tabCond)
-
-            if ($tabIndex -lt $uiTabs.Count) {
-                $pattern = $uiTabs[$tabIndex].GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern)
-                $pattern.Select()
             }
         }
     } catch {}

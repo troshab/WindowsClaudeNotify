@@ -1,14 +1,14 @@
 # WindowsClaudeNotify
 
-Windows toast notifications for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with **instant tab switching** in Windows Terminal. When Claude Code needs your attention, the correct tab is focused immediately - no clicking required.
+Windows toast notifications for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with **smart tab switching** in Windows Terminal. Click "Open Terminal" on the toast to focus the correct tab - even with multiple Claude Code sessions open.
 
 ## Features
 
-- **Instant tab switching** - immediately focuses the correct Windows Terminal tab when a notification fires, even with multiple Claude Code sessions open
+- **Smart tab switching** - click "Open Terminal" on the toast to focus the correct Windows Terminal tab, even with multiple Claude Code sessions open
 - **Real messages** - shows the actual Claude Code notification text (permission prompts, task completion, etc.)
+- **Non-intrusive** - shows a toast without stealing focus; you switch when you're ready
 - **No window resize** - restores minimized windows without un-maximizing (uses `SW_RESTORE`)
-- **"Open Terminal" button** - toast includes a button to return to the correct tab later via a custom `claude-focus:` protocol (useful if you switched away)
-- **Silent wrapper** - VBS launcher prevents console window flash when clicking the toast button
+- **Silent protocol handler** - `claude-focus:` custom URI protocol with VBS wrapper prevents console window flash
 - **Process tree analysis** - walks up the PID parent chain + uses `NtQueryInformationProcess` to map the calling Claude Code session to the correct WT tab
 
 ## Requirements
@@ -72,24 +72,23 @@ Claude Code (notification hook)
     v
 notify.ps1 (reads hook JSON from stdin)
     |
-    |-- 1. Finds WindowsTerminal process
-    |-- 2. Restores window if minimized (SW_RESTORE)
-    |-- 3. SetForegroundWindow()
-    |-- 4. Walks process tree: PID -> parent -> ... -> WT
+    |-- 1. Walks process tree: PID -> parent -> ... -> WindowsTerminal
     |       Maps to shell children of WT, sorted by StartTime
     |       Determines tab index
-    |-- 5. UI Automation: SelectionItemPattern.Select() on TabItem
-    |       ** Tab switches IMMEDIATELY here **
-    |-- 6. Shows toast notification with tab index in button URL
+    |-- 2. Shows toast notification with tab index encoded in button URL
     |
     v
-Later: toast "Open Terminal" button click -> claude-focus:{tabIndex}
+User clicks "Open Terminal" -> claude-focus:{tabIndex}
     |
     v
 focus.vbs (silent launcher, no console flash)
     |
     v
-focus.ps1 (parses URI, re-focuses WT, switches tab via UI Automation)
+focus.ps1
+    |-- 1. Finds WindowsTerminal process
+    |-- 2. Restores window if minimized (SW_RESTORE)
+    |-- 3. SetForegroundWindow()
+    |-- 4. UI Automation: SelectionItemPattern.Select() on TabItem
 ```
 
 ### Tab detection explained
