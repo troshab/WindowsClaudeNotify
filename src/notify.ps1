@@ -53,28 +53,32 @@ public class WinAPI {
 }
 "@
 
-$wt = Get-Process -Name WindowsTerminal -ErrorAction SilentlyContinue | Select-Object -First 1
-if ($wt) {
-    try {
-        $wtPid = $wt.Id
+$wtPid = 0
+try {
+    # Walk up our parent chain to find the WindowsTerminal ancestor
+    $ancestors = @()
+    $p = $PID
+    $wtProcesses = @{}
+    Get-Process -Name WindowsTerminal -ErrorAction SilentlyContinue | ForEach-Object { $wtProcesses[$_.Id] = $_ }
 
-        # Find shell processes that are direct children of WT (exclude OpenConsole)
+    for ($i = 0; $i -lt 15; $i++) {
+        try {
+            $ancestors += $p
+            $p = [WinAPI]::GetParentPid($p)
+            if ($wtProcesses.ContainsKey($p)) {
+                $wtPid = $p
+                break
+            }
+        } catch { break }
+    }
+
+    if ($wtPid -gt 0) {
+        # Find shell processes that are direct children of our WT (exclude OpenConsole)
         $shells = Get-Process | Where-Object {
             try {
                 [WinAPI]::GetParentPid($_.Id) -eq $wtPid -and $_.ProcessName -ne 'OpenConsole'
             } catch { $false }
         } | Sort-Object StartTime
-
-        # Walk up our parent chain to find which shell is our ancestor
-        $ancestors = @()
-        $p = $PID
-        for ($i = 0; $i -lt 15; $i++) {
-            try {
-                $ancestors += $p
-                $p = [WinAPI]::GetParentPid($p)
-                if ($p -eq $wtPid) { break }
-            } catch { break }
-        }
 
         $ourShell = $shells | Where-Object { $ancestors -contains $_.Id } | Select-Object -First 1
         if ($ourShell) {
@@ -84,8 +88,8 @@ if ($wt) {
                 $tabIndex++
             }
         }
-    } catch {}
-}
+    }
+} catch {}
 
 # --- Show toast notification ---
 $Body = $Body -replace '&','&amp;' -replace '<','&lt;' -replace '>','&gt;' -replace '"','&quot;' -replace "'","&apos;"
@@ -105,7 +109,7 @@ $xml.LoadXml("<toast>
     </binding>
   </visual>
   <actions>
-    <action content='Open Terminal' activationType='protocol' arguments='claude-focus:$tabIndex'/>
+    <action content='Open Terminal' activationType='protocol' arguments='claude-focus:$wtPid`:$tabIndex'/>
   </actions>
   <audio silent='true'/>
 </toast>")

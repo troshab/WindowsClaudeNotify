@@ -1,14 +1,20 @@
 # WindowsClaudeNotify - Focus helper script
 # Called via claude-focus: protocol when clicking the toast "Open Terminal" button
-# Focuses the Windows Terminal window and switches to the correct tab
+# Focuses the correct Windows Terminal window and switches to the correct tab
+# URI format: claude-focus:{wtPid}:{tabIndex}
 
 param(
     [string]$Uri = "",
-    [int]$TabIndex = -1
+    [int]$TabIndex = -1,
+    [int]$WtPid = 0
 )
 
-# Parse tab index from protocol URI (claude-focus:N)
-if ($Uri -match 'claude-focus:(\d+)') {
+# Parse WT PID and tab index from protocol URI (claude-focus:PID:TAB)
+if ($Uri -match 'claude-focus:(\d+):(\d+)') {
+    $WtPid = [int]$Matches[1]
+    $TabIndex = [int]$Matches[2]
+} elseif ($Uri -match 'claude-focus:(\d+)') {
+    # Fallback: old format with tab index only
     $TabIndex = [int]$Matches[1]
 }
 
@@ -22,7 +28,14 @@ public class WinFocus {
 }
 "@
 
-$wt = Get-Process -Name WindowsTerminal -ErrorAction SilentlyContinue | Select-Object -First 1
+# Find the correct WT window: by PID if available, otherwise first one
+$wt = $null
+if ($WtPid -gt 0) {
+    $wt = Get-Process -Id $WtPid -ErrorAction SilentlyContinue
+}
+if (-not $wt) {
+    $wt = Get-Process -Name WindowsTerminal -ErrorAction SilentlyContinue | Select-Object -First 1
+}
 if (-not $wt) { exit }
 
 $h = $wt.MainWindowHandle
