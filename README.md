@@ -2,6 +2,8 @@
 
 Windows toast notifications for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) with **smart tab switching** in Windows Terminal. Click "Open Terminal" on the toast to focus the correct tab - even with multiple Claude Code sessions open.
 
+![Toast notification](assets/screenshot.png)
+
 ## Features
 
 - **Smart tab switching** - click "Open Terminal" on the toast to focus the correct Windows Terminal tab, even with multiple Claude Code sessions open
